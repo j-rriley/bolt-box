@@ -1,0 +1,19 @@
+*/  First step: wcat program. 
+    Goal of program: reads a file as specified by the user
+    and prints its contents.
+    Therefore, there must be a file input, the file must be opened by the
+    program, it must get each line/character of the document, print the line,
+    go to the next line, and print until there are no lines left.
+    The output of the program should be a string. /*
+
+    int main() {
+        //wcat program 
+        
+        int wcat(String file) {
+        String currentLine = ""; 
+        int lineNum = 0; 
+        FILE *fp = fopen("file", "r"); 
+            
+        
+        }
+    }

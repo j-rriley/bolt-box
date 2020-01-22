@@ -6,14 +6,20 @@
     go to the next line, and print until there are no lines left.
     The output of the program should be a string. /*
 
+   
     int main() {
         //wcat program 
         
-        int wcat(String file) {
-        String currentLine = ""; 
-        int lineNum = 0; 
-        FILE *fp = fopen("file", "r"); 
-            
+        int wcat(String input) {
+        char line[INT_MAX];
         
+        FILE *fp = fopen("input", "r"); 
+        if(*fp == NULL) {
+            printf("file open failed\n");
+            exit(1);
+        }
+        
+        fgets(line, INT_MAX, *fp);
+        printf(%s, line);
         }
     }

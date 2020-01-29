@@ -1,42 +1,52 @@
 #include <stdio.h>
-#include <stlib.h>
+#include <stdlib.h>
+#include <string.h>
 
 int main(int argc, char **argv){
-    //if passed no command-line arguments
+    char *input;
 
-    if(argc == 0) {
-        printf("wgrep: searchterm [file...]\n");
+    //if passed no command-line arguments
+    if(argc == 1) {
+        printf("wgrep: searchterm [file ...]\n");
         exit(1);
     }
+
     
+    char *phrase = argv[1];
     int counter = 2; 
 
-    while(counter <= argc) {
+    while(counter < argc || argc == 2) {
         //picking the file
-        char *input = argv[counter];
-
-        //if no files were input
-        if(input == NULL) {
-            input = stdin; 
-        }
+        input = argv[counter];
 
         //open the file
         FILE *fp = fopen(input, "r");
-
+        
         //if file is invalid
-        if(fp == NULL) {
+
+        //if no file is input but a search term is
+         if(argc == 2 && input == NULL) {
+             fp = stdin; 
+        }
+
+        if(fp == NULL && argc != 2) {
             printf("wgrep: cannot open file\n");
             exit(1);
         }
 
-        //reading each line of the file for the input phrase 
-        size_t length = 0; 
-        ssize_t read;    
-        //read the lines
-        while((read = getline(&line, &length, fp)) != -1){
+        size_t size = 0; 
+        ssize_t read;
+        char *line = NULL; 
         
-
-        }
+        //read the lines
+        while((read = (getline(&line, &size, fp))) != -1){
+            if(strstr(line, phrase) != NULL) {
+                printf("%s", line);
+            }
     }
-    exit(0);
+    counter = counter + 1;
+	argc = 0;  
+
+    }
+exit(0);
 }

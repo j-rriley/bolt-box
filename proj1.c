@@ -29,7 +29,8 @@ struct Event {
     int eventNum; 
     int time; 
     int eventType; 
-    struct Event* next; 
+    struct Event* nextPQ;
+    struct Event* nextFIFO;  
 }; 
   
 // The FIFOQueue, front stores the front node of LL and rear stores the last node of LL 
@@ -42,7 +43,7 @@ struct Event* newEvent(int number)
 { 
     struct Event* temp = (struct Event*)malloc(sizeof(struct Event)); 
     temp->eventNum = number; 
-    temp->next = NULL; 
+    temp->nextPQ = NULL; 
     return temp; 
 } 
   
@@ -96,7 +97,7 @@ struct Event* removeQ(struct FIFOQueue* q)
 //                            PRIORITY QUEUE DATA STRUCTURE FOR EVENT HANDLING
 
   
-// The queue, front stores the front node of LL and rear stores the last node of LL 
+// The priority queue, storing both the front and the rear
 struct PQueue { 
     struct Event *front, *rear; 
 }; 
@@ -131,16 +132,16 @@ void addPQ(struct PQueue* q, struct Event* event)
         //if the place checked is a the same time as the inserted event and the next event's time is greater than or equal to the inserted event, insert here
         if(placement->time = timeOfNew && placement->next->time >= timeOfNew) {
             sorted = 0; 
-            struct Event* temp = placement->next; 
-            placement->next = event; 
-            event->next = temp; 
+            struct Event* temp = placement->nextPQ; 
+            placement->nextPQ = event; 
+            event->nextPQ = temp; 
         }
         //if the place checked is a bigger time than the inserted event, then insert where that event currently is
         if(placement->time > timeOfNew) {
             sorted = 0; 
             struct Event* temp = placement; 
             placement = event; 
-            event->next = placement; 
+            event->nextPQ = placement; 
         }
         //if placement is NULL, then you are at the rear and you can insert here
         else{            
@@ -148,7 +149,7 @@ void addPQ(struct PQueue* q, struct Event* event)
             q->rear->next = event; 
             q->rear = event; 
         }
-        placement = placement->next; 
+        placement = placement->nextPQ; 
     }
     
 } 
@@ -160,6 +161,7 @@ struct Event* removePQ(struct PQueue* q)
     if (q->front == NULL) {
         return NULL; 
     }
+
     // Store previous front and move front one node ahead 
     struct Event* temp = q->front; 
     q->front = q->front->next; 
@@ -245,27 +247,72 @@ int determineProbability(int probType) {
     return boolean; 
 }
 
-
+int checkWhichDisk(struct FIFOQueue* disk1, struct FIFOQueue* disk2) {
+    int whichDisk = -1; 
+    //if the disk 1 queue doesnt have components
+    if(disk1->front == NULL) {
+        whichDisk = 1; 
+    }
+    //if disk 2 queue doesnt have components
+    if(disk2->front == NULL){
+        whichDisk = 2; 
+    }
+    //if both have components, see which has less and decide
+    else {
+        int disk1Count = 1;
+        int disk2Count = 1; 
+        struct Event* placement1 = disk1->front->nextFIFO; 
+        struct Event* placement2 = disk2->front->nextFIFO; 
+        while(placement1 != NULL) {
+            disk1Count++; 
+            placement1 = placement1->nextFIFO; 
+        } 
+        while(placement2 != NULL) {
+            disk2Count++; 
+            placement2 = placement2->nextFIFO; 
+        } 
+        if(placement1 <= placement2) {
+            whichDisk = 1; 
+        }
+        else{
+            whichDisk = 2; 
+        }
+    }
+    return whichDisk; 
+}
 
 //                                         EVENT HANDLERS 
 
 //this will be called when the job removed from the priority queue has eventkey 0. what will we do once a job has arrived? it will set the current time to 0 
-//(the time of the event we removed from the queue), determine the arrival time fro the next job to enter system and add to queue
+//(the time of the event we removed from the queue), determine the arrival time for the next job to enter system and add to queue
 //send the first job to the CPU
-void handleJobArrival(FILE* logFile, struct PQueue* priority, struct Event* event) {
-    addLog(logFile, event); 
-    event->time = 0;
 
-    //set up new job 
+void handleJobArrival(FILE* logFile, struct PQueue* priority, struct FIFOQueue* CPU, struct Event* event) {
+    addLog(logFile, event); 
+
+    //getting states for next job arrival
     int currentEventNum = event->eventNum;
     int currentTime = event->time;
 
+    //creating the next job
     struct Event* new = newEvent(currentEventNum + 1); 
     new->time = currentTime+(determineTime(ARRIVE_MIN,ARRIVE_MAX));
     new->eventType = 0;
     addPQ(priority, new);
+
+    //sending last job to CPU with amount of time it will be processed for
     event->eventType = 1; 
-    addPQ(priority, event);
+    event->time = (event->time) + determineTime(CPU_MIN, CPU_MAX);
+
+    //if the CPU is freed up, immediately add event to Pqueue
+    if(CPU->front == NULL) {
+        addPQ(priority, event);
+    }
+
+    //if the CPU has events waiting, add it to the queue for processing
+    else{
+        add(CPU, event); 
+    }
 }
 
 
@@ -275,49 +322,142 @@ void handleJobArrival(FILE* logFile, struct PQueue* priority, struct Event* even
 //this is called when the event removed from the priority queue is of key 1. 
 //therefore this must determine- Will it exit the system? will it do disk I/O or use the network? 
 
-void handleCPUExit(FILE* logFile, struct PQueue* priority, struct FIFOQueue* CPU, struct Event* event) {
+void handleCPUExit(FILE* logFile, struct PQueue* priority, struct FIFOQueue* CPU, struct FIFOQueue* disk1, struct FIFOQueue* disk2, struct FIFOQueue* network, struct Event* event) {
     addLog(logFile, event);
-    //if the CPU FIFOQueue is not empty, add job to FIFOQueue
-    if(CPU->front != NULL) {
-        add(CPU, event);
-    }
-    //if the CPU FIFOQueue is empty, have the CPU process the event by seeing where it goes next. 
+
+    //// -> DETERMINE WHERE IT GOES NEXT
+
     //will it exit the event handler? 
     int quitProb = determineProbability(QUIT_PROB);
-    //if yes, do not add anything to priority queue
+    
+    //if yes, nothing else needs to be done here, so we will remove the event from the CPUqueue and add the next to the priority queue for processing
     if(quitProb == 0) {
-        return; 
+        struct Event* next = event->nextFIFO; 
+        if(next != NULL) {
+           addPQ(priority, next);
+        }
+       removeQ(CPU);
     }
+
     //if no, check if it will go to network or disk
         else 
         {
             int networkProb = determineProbability(NETWORK_PROB);
             if(networkProb == 0) {
                 event->eventType = 4;
-                addPQ(priority, event); 
+                event->time = (event->time) + determineTime(NETWORK_MIN, NETWORK_MAX);
+                removeQ(CPU);
+
+                //if the network is freed up, immediately add new event to Pqueue and remove old from 
+                     if(network->front == NULL) {
+                        addPQ(priority, event);
+                    }
+
+                //if the network has events waiting, add it to the network queue for processing
+                    else{
+                        add(network, event); 
+                    }    
             }
+           
+             //if not network, it will go to a disk. which disk? call disk function
             else{
-                event->eventType = 2; 
-                addPQ(priority, event);
+                int diskChoice = checkWhichDisk(disk1, disk2);
+                if(diskChoice == 1) {
+                    event->eventType = 2;
+                    event->time = (event->time) + determineTime(DISK1_MIN, DISK1_MAX);
+                    removeQ(CPU);
+                    //if disk1 is freed up, immediately add event to Pqueue
+                     if(disk1->front == NULL) {
+                        addPQ(priority, event);
+                    }
+                    //if the disk1 has events waiting, add it to the disk1 queue for processing
+                    else{
+                        add(disk1, event); 
+                    }
+                }
+                else{
+                    event->eventType = 3;
+                    event->time = (event->time) + determineTime(DISK2_MIN, DISK2_MAX);
+                    removeQ(CPU);
+                    //if disk2 is freed up, immediately add event to Pqueue (consider it processed)
+                     if(disk2->front == NULL) {
+                        addPQ(priority, event);
+                    }
+                    //if the disk2 has events waiting, add it to the disk2 queue for processing
+                    else{
+                        add(disk2, event); 
+                    }
+                }
             }
         }
 }
 
 
-//If event key is 2 or 3, it will use this handler. this will check the availability of both disks 
+//If event key is 2, it will use this handler. this will remove the event from the disk1 queue, send it back to the CPU for processing, and process the next job for disk1
 
-void handleUseOfDisks(FILE* logFile, struct FIFOQueue* disk1, struct FIFOQueue* disk2, struct Event* event) {
-
-}
-
-//Add to the network FIFOQueue
-
-void handleUseOfNetwork(FILE* logFile, struct FIFOQueue* network, struct Event* event) {
-
-}
-
-void handleEndSimulation(FILE* logFile, struct PQueue* priority) {
+void handleUseOfDisk1(FILE* logFile, struct PQueue* priority, struct FIFOQueue* CPU, struct FIFOQueue* disk1, struct Event* event) {
    
+    addLog(logFile, event);
+
+    //find next structure in Disk1
+    struct Event* next = event->nextFIFO; 
+
+    //set up current event for CPU and remove from disk1
+    event->eventType = 1; 
+    event->time = (event->time) + determineTime(CPU_MIN, CPU_MAX);
+    removeQ(disk1);
+    add(CPU, event);
+
+    //process the next event by the disk
+    addPQ(priority, next);
+    
+}
+
+
+//If event key is 3, it will use this handler. this will remove the event from the disk2 queue and process the next
+
+void handleUseOfDisk2(FILE* logFile, struct PQueue* priority, struct FIFOQueue* CPU, struct FIFOQueue* disk2, struct Event* event) {
+    
+    addLog(logFile, event);
+
+    //find next structure in Disk1
+    struct Event* next = event->nextFIFO; 
+
+    //set up current event for CPU and remove from disk1
+    event->eventType = 1; 
+    event->time = (event->time) + determineTime(CPU_MIN, CPU_MAX);
+    removeQ(disk2);
+    add(CPU, event);
+
+    //process the next event by disk 2 if there is one
+    if(next != NULL) {
+    addPQ(priority, next);
+    }
+}
+
+//If event key is 4, it will use this handler. this will remove the event from the network queue and process the next
+
+void handleUseOfNetwork(FILE* logFile, struct PQueue* priority, struct FIFOQueue* CPU, struct FIFOQueue* network, struct Event* event) {
+
+    addLog(logFile, event);
+
+    //find next structure in network
+    struct Event* next = event->nextFIFO; 
+
+    //set up current event for CPU and remove from network
+    event->eventType = 1; 
+    event->time = (event->time) + determineTime(CPU_MIN, CPU_MAX);
+    removeQ(network);
+    add(CPU, event);
+
+    //process the next event by the network if there is one
+    if(next != NULL) {
+    addPQ(priority, next);
+    }
+}
+
+void handleEndSimulation(FILE* logFile, struct Event* endSim) {
+    addLog(logFile, endSim);
 }
 
 
@@ -338,6 +478,49 @@ int main(int argc, char **argv) {
     struct FIFOQueue* network = createQueue();
     struct PQueue* priority = createQueue(); 
     FILE* logFile = createLogFile("log-file");
+
+    //initializing priority queue
+    struct Event* event1 = newEvent(1);
+    event1->eventType = 0; 
+    event1->time = INIT_TIME; 
+    addPQ(priority, event1);
+    
+    //endpoint for priority queue
+    struct Event* eventLast = newEvent(0);
+    eventLast->eventType = 5;
+    eventLast->time = FIN_TIME; 
+
+    //event to be pulled
+    struct Event* event;
+
+    while(priority->front != NULL) {
+        
+        event = removePQ(priority);
+
+        if(event->eventType == 0) {
+            handleJobArrival(logFile, priority, CPU, event);
+        }
+        
+        if(event->eventType == 1) {
+            handleCPUExit(logFile, priority, CPU, disk1, disk2, network, event);
+        }
+
+        if(event->eventType == 2) {
+            handleUseOfDisk1(logFile, priority, CPU, disk1, event);
+        }
+
+        if(event->eventType == 3) {
+            handleUseOfDisk2(logFile, priority, CPU, disk2, event);
+        }
+
+        if(event->eventType == 4) {
+            handleUseOfNetwork(logFile, priority, CPU, network, event);
+        }
+        else {
+            handleEndSimulation(); 
+            break; 
+        }
+    }
 
     
 }

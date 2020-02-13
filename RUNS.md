@@ -32,7 +32,10 @@ Throughput of 4- 0.000000
 
                   ---------------------------------------SCREENSHOT OF LOG------------------------------------
 ![run1]("RUN1.png")
-                   ---------------------------------------CONFIG----------------------------------------------
+                 
+                 
+                 
+                 ---------------------------------------CONFIG----------------------------------------------
 #define SEED 2
 #define INIT_TIME 0 
 #define FIN_TIME 20000
@@ -48,7 +51,10 @@ Throughput of 4- 0.000000
 #define DISK2_MAX 75
 #define NETWORK_MIN 10
 #define NETWORK_MAX 20
+
+
                       ----------------------------------------TAKEAWAYS-------------------------------------------
+                      
 In cases with high event arrival rates, if the CPU matches that, it flows just as it would with the opposite (both being low times). As seen by my statists (the ones that ran properly), The max size of the CPU at a time was 3, and it remained low at other times.
 
 
@@ -95,6 +101,8 @@ Throughput of 4- 0.000000
 
                     ---------------------------------------SCREENSHOT OF LOG------------------------------------
 ![run2]("RUN2.png")
+
+
                        ----------------------------------------CONFIG----------------------------------------------
 #define SEED 2
 #define INIT_TIME 0 
@@ -111,6 +119,9 @@ Throughput of 4- 0.000000
 #define DISK2_MAX 43
 #define NETWORK_MIN 11
 #define NETWORK_MAX 15
+
+
+
                       ----------------------------------------TAKEAWAYS-------------------------------------------
 When you have a small arrive time and a much higher CPU time, it is easy for the CPU queue to build up and have long waiting rates. 
 
@@ -164,7 +175,11 @@ Throughput of 4- 0.000000
 
                   ---------------------------------------SCREENSHOT OF LOG------------------------------------
 ![run3]("RUN3.png")
+
+
+
                     ---------------------------------------CONFIG----------------------------------------------
+                    
 #define SEED 2
 #define INIT_TIME 0 
 #define FIN_TIME 50000
@@ -180,5 +195,10 @@ Throughput of 4- 0.000000
 #define DISK2_MAX 43
 #define NETWORK_MIN 30
 #define NETWORK_MAX 50
+
+
+
                   ----------------------------------------TAKEAWAYS-------------------------------------------
+                  
+                  
 By this, we see that any event with a high time of arrival and bounds for the random generator will have a much longer time executing. 

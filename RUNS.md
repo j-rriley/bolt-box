@@ -1,6 +1,6 @@
 RUN #1:
 
-----------------------------------------------STATS-----------------------------------------
+                  ----------------------------------------------STATS-----------------------------------------
 Stats for 1 Queue: 
 Average size of 1- 0.000000
 Max size of 1- 3.000000
@@ -30,9 +30,9 @@ Average response time of 4- 7.000000
 Max response time of 4- 20.000000
 Throughput of 4- 0.000000
 
----------------------------------------SCREENSHOT OF LOG------------------------------------
-![run1]("RUN1.png)
----------------------------------------CONFIG----------------------------------------------
+                  ---------------------------------------SCREENSHOT OF LOG------------------------------------
+![run1]("RUN1.png")
+                   ---------------------------------------CONFIG----------------------------------------------
 #define SEED 2
 #define INIT_TIME 0 
 #define FIN_TIME 20000
@@ -48,7 +48,7 @@ Throughput of 4- 0.000000
 #define DISK2_MAX 75
 #define NETWORK_MIN 10
 #define NETWORK_MAX 20
-----------------------------------------TAKEAWAYS-------------------------------------------
+                      ----------------------------------------TAKEAWAYS-------------------------------------------
 In cases with high event arrival rates, if the CPU matches that, it flows just as it would with the opposite (both being low times). As seen by my statists (the ones that ran properly), The max size of the CPU at a time was 3, and it remained low at other times.
 
 
@@ -62,7 +62,7 @@ In cases with high event arrival rates, if the CPU matches that, it flows just a
 
 RUN #2:
 
-----------------------------------------------STATS-----------------------------------------
+                    ----------------------------------------------STATS-----------------------------------------
 Stats for 1 Queue: 
 Average size of 1- 436.000000
 Max size of 1- 887.000000
@@ -93,9 +93,9 @@ Max response time of 4- 15.000000
 Throughput of 4- 0.000000
 
 
----------------------------------------SCREENSHOT OF LOG------------------------------------
-![run2]("RUN2.png)
-----------------------------------------CONFIG----------------------------------------------
+                    ---------------------------------------SCREENSHOT OF LOG------------------------------------
+![run2]("RUN2.png")
+                       ----------------------------------------CONFIG----------------------------------------------
 #define SEED 2
 #define INIT_TIME 0 
 #define FIN_TIME 10000
@@ -111,7 +111,7 @@ Throughput of 4- 0.000000
 #define DISK2_MAX 43
 #define NETWORK_MIN 11
 #define NETWORK_MAX 15
-----------------------------------------TAKEAWAYS-------------------------------------------
+                      ----------------------------------------TAKEAWAYS-------------------------------------------
 When you have a small arrive time and a much higher CPU time, it is easy for the CPU queue to build up and have long waiting rates. 
 
 
@@ -131,7 +131,7 @@ When you have a small arrive time and a much higher CPU time, it is easy for the
 
 RUN #3:
 
-----------------------------------------------STATS-----------------------------------------
+                      ----------------------------------------------STATS-----------------------------------------
 Stats for 1 Queue: 
 Average size of 1- 0.000000
 Max size of 1- 5.000000
@@ -162,9 +162,9 @@ Max response time of 4- 50.000000
 Throughput of 4- 0.000000
 
 
----------------------------------------SCREENSHOT OF LOG------------------------------------
-![run3]("RUN3.png)
----------------------------------------CONFIG----------------------------------------------
+                  ---------------------------------------SCREENSHOT OF LOG------------------------------------
+![run3]("RUN3.png")
+                    ---------------------------------------CONFIG----------------------------------------------
 #define SEED 2
 #define INIT_TIME 0 
 #define FIN_TIME 50000
@@ -180,5 +180,5 @@ Throughput of 4- 0.000000
 #define DISK2_MAX 43
 #define NETWORK_MIN 30
 #define NETWORK_MAX 50
-----------------------------------------TAKEAWAYS-------------------------------------------
+                  ----------------------------------------TAKEAWAYS-------------------------------------------
 By this, we see that any event with a high time of arrival and bounds for the random generator will have a much longer time executing. 

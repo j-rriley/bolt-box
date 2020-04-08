@@ -30,7 +30,7 @@
 #define DEFAULT_DICTIONARY "words"
 #define MAX_WORD_SIZE 20
 #define MAX_PHRASE_SIZE 30
-#define DEFAULT_DICT_SIZE 99172
+#define DEFAULT_DICT_SIZE 100000
 char* dict_name = ""; 
 int dictionary_size = 0; 
 char dictionary[DEFAULT_DICT_SIZE][MAX_WORD_SIZE]; 
@@ -53,8 +53,8 @@ FILE* logFile;
                          * primitives needed for synchronization and 
                          * the threads themselves, plus the variables
                          * they are protecting.                    **/
-#define BUFFER_MAX 3
-#define NUM_WORKERS 3
+#define BUFFER_MAX 100
+#define NUM_WORKERS 4
 pthread_t pool[NUM_WORKERS], logT;
 struct syncPrimitivesJob {
     pthread_mutex_t lock; 
@@ -210,7 +210,7 @@ char *removeFromLogQueue() {
 int check_dict(char* word, char dictionary[dictionary_size][MAX_WORD_SIZE]) {
     //linear search for word
     for (int i = 0; word[i] != '\0'; i++) {
-        while (!((word[i] >= 'a' && word[i] <= 'z') || (word[i] >= 'A' && word[i] <= 'Z') || word[i] == '\0')) {
+        while (!((word[i] >= 'a' && word[i] <= 'z') || (word[i] >= 'A' && word[i] <= 'Z') || word[i] == '\0' || word[i] == 39)) {
             for (int j = i; word[j] != '\0'; j++) {
                 word[j] = word[j + 1];
             }
@@ -416,28 +416,20 @@ int main(int argc, char** argv) {
     }
     
     
-    //Check for amount of space needed for dictionary array
-    char ch; 
-    int dict_size = 0; 
-    do {
-        ch = fgetc(dictionaryFile);
-        if(ch == '\n') 
-        dict_size++;
-    } while (ch != EOF);
-    rewind(dictionaryFile);
-    dictionary_size = dict_size+1; //+1 because it will not count last word
 
-    //Read in each line and set word to space in dictionary array
+    //Read in each line and set word to space in dictionary array, also capture dictionary size
     int count = 0; 
-    while(count < dictionary_size && (fgets(dictionary[count], sizeof(dictionary[count]), dictionaryFile) != NULL)) {
+    while((fgets(dictionary[count], sizeof(dictionary[count]), dictionaryFile) != NULL)) {
         count++; 
     }
+    dictionary_size = count; 
     #ifdef TEST
         printf("TEST: We have %d words in the dictionary.\n", dict_size); 
     #endif
 
     //Close the file
     fclose(dictionaryFile); 
+    
 
                                 /**********************************
                                  *  Creation of threads that will
@@ -457,7 +449,7 @@ int main(int argc, char** argv) {
         exit(1);
     }
 
-    logFile = fopen("log.txt", "a");
+    logFile = fopen("log.txt", "w");
     if(logFile == NULL) {
         printf("Error creating log file.");
         exit(1);

@@ -41,7 +41,7 @@ char dictionary[DEFAULT_DICT_SIZE][MAX_WORD_SIZE];
 
 #define DEFAULT_PORT 7000
 int port = 0; 
-int socket_desc, new_socket, c; 
+int new_socket, c; 
 struct sockaddr_in server, client; 
 
                         /**    Variable needed for log file     **/ 
@@ -52,7 +52,7 @@ FILE* logFile;
                          * primitives needed for synchronization and 
                          * the threads themselves, plus the variables
                          * they are protecting.                    **/
-#define BUFFER_MAX 100
+#define BUFFER_MAX 3
 #define NUM_WORKERS 3
 pthread_t pool[NUM_WORKERS], logT;
 struct syncPrimitivesJob {
@@ -83,10 +83,11 @@ struct syncPrimitivesLog logInfo;
                          *  put.                     **/
 
 void addToSocketQueue(int value) {
-
+    printf("TEST: Trying to acquire lock to add socket to queue...\n");
     pthread_mutex_lock(&socketInfo.lock);//Acquire lock
-
+    printf("TEST: Lock acquired for adding a socket from queue!\n");
     while(socketInfo.count == BUFFER_MAX) {
+        printf("TEST: Sitting here waiting for a space in the socket queue to empty out!\n");
         pthread_cond_wait(&socketInfo.empty, &socketInfo.lock);//Block thread while buffer is full
     }
 
@@ -94,18 +95,19 @@ void addToSocketQueue(int value) {
     socketInfo.fill_ptr = (socketInfo.fill_ptr + 1) % BUFFER_MAX;           // adding a socket to the
     socketInfo.count = socketInfo.count +1;                                 // queue 
 
+    printf("TEST: I added something to the socket queue! A client has connected! Giving %d this index: %d.\n", value, socketInfo.count);
+    pthread_mutex_unlock(&socketInfo.lock); //Release lock
+    printf("TEST: Socket added and releasing lock!\n");
     pthread_cond_signal(&socketInfo.fill); //Signal that socket was added to queue
-    pthread_mutex_unlock(&socketInfo.lock);//Release lock
-    printf("TEST: Connection successful!\n");
-    char message[] = "Connection to the server is successful. Enter a word for spell check or enter escape key to exit.\n";
-    write(socket_desc, message, strlen(message));
 }
 
 int removeFromSocketQueue() {
-
+    printf("TEST: Trying to acquire lock to remove to queue...\n");
     pthread_mutex_lock(&socketInfo.lock); //Acquire lock
+    printf("TEST: Lock acquired for removing a socket from queue!\n");
 
     while(socketInfo.count == 0) {
+        printf("TEST: Sitting here waiting for socket to fill up!\n");
         pthread_cond_wait(&socketInfo.fill, &socketInfo.lock);//Block thread until buffer has item
     }
 
@@ -113,10 +115,9 @@ int removeFromSocketQueue() {
     socketInfo.use_ptr = (socketInfo.use_ptr +1) % BUFFER_MAX;      // removing a socket from
     socketInfo.count = socketInfo.count -1;                         // the queue
 
-    pthread_cond_signal(&socketInfo.empty); //Signal space is available in buffer
-
+    printf("TEST: There's another space here in the socket buffer!\n");
     pthread_mutex_unlock(&socketInfo.lock); //Release lock 
-
+    pthread_cond_signal(&socketInfo.empty); //Signal space is available in buffer
     return temp; //Return socket
 }
 
@@ -132,8 +133,9 @@ void addToLogQueue(char phrase[MAX_WORD_SIZE]) {
     logInfo.fill_ptr = (logInfo.fill_ptr +1) % BUFFER_MAX;        //adding a phrase to 
     logInfo.count = logInfo.count +1;                             //the logInfo queue
 
-    pthread_cond_signal(&logInfo.fill); //Signal logInfo was added to queue
     pthread_mutex_unlock(&logInfo.lock); //Release lock
+    pthread_cond_signal(&logInfo.fill); //Signal logInfo was added to queue
+
 }
 
 char *removeFromLogQueue() {
@@ -150,10 +152,10 @@ char *removeFromLogQueue() {
     logInfo.use_ptr = (logInfo.use_ptr +1) % BUFFER_MAX;      // removing a socket from
     logInfo.count = logInfo.count -1;                         // the logInfo queue
 
-    pthread_cond_signal(&logInfo.empty); //Signal spot is avaiable in buffer
-
+    
     pthread_mutex_unlock(&logInfo.lock); //Release lock
 
+    pthread_cond_signal(&logInfo.empty); //Signal spot is avaiable in buffer
     return temp; 
 }
                                                                             /********************************************************
@@ -168,13 +170,28 @@ char *removeFromLogQueue() {
 
 int check_dict(char* word, char dictionary[dictionary_size][MAX_WORD_SIZE]) {
     //linear search for word
+    for (int i = 0; word[i] != '\0'; i++) {
+        while (!((word[i] >= 'a' && word[i] <= 'z') || (word[i] >= 'A' && word[i] <= 'Z') || word[i] == '\0')) {
+            for (int j = i; word[j] != '\0'; j++) {
+                word[j] = word[j + 1];
+            }
+            word[i] = '\0';
+        }
+    }
+    char append = '\n';
+    char *check = malloc(sizeof(word));
+    strcpy(check, word); 
+    strncat(check, &append, 1);
+    printf("TEST: Checking for %s in dictionary.\n", word);
     for(int i = 0; i < dictionary_size-1; i++) {
-        if(strcmp(word, dictionary[i]) == 0) {
+        if(strcmp(check, dictionary[i]) == 0) {
             printf("%s OK\n", word);            //if the word is found, print OK
+            free(check);
             return 0;
         }
     }
     printf("%s MISPELLED\n", word);             //if the word is not found, print mispelled
+    free(check); 
     return -1; 
 }
 
@@ -199,15 +216,21 @@ int check_dict(char* word, char dictionary[dictionary_size][MAX_WORD_SIZE]) {
 //                         do same with "MISPELLED". Write the word and socket to logInfo queue. 
 void* worker_threads(void* arg) { 
     while(1) { 
-        socket_desc = removeFromSocketQueue();
-        if(socket_desc == -1) {
-            printf("Error removing socket from queue.");
-            exit(1);
+        int socket_desc; 
+        printf("TEST: Worker thread activated. Sitting here waiting to be used!\n");
+        while(socketInfo.count == 0) {
+            continue;
         }
+        socket_desc = removeFromSocketQueue();
+
+        char message[] = "Connection to the server is successful. Enter a word for spell check or enter escape key to exit.\n";
+        write(socket_desc, message, strlen(message));
+
+        printf("TEST: Worker thread activated. Time to get a word!\n");
 
         char *word = calloc(MAX_WORD_SIZE, 1);
         while(read(socket_desc, word, MAX_WORD_SIZE) > 0) {
-
+ 
             if(word[0] == 27) {                     //If escape key is entered
                 printf("Exiting %d client...\n", socket_desc);
                 char goodbye[] = "Have a nice day!\n";                    
@@ -229,7 +252,6 @@ void* worker_threads(void* arg) {
             }
             write(socket_desc, word, strlen(word));
             addToLogQueue(word);
-            free(word);
             word = calloc(MAX_WORD_SIZE, 1);
             char reprompt[] = "Please enter another word or press escape to exit.\n";
             write(socket_desc, reprompt, strlen(reprompt));
@@ -252,9 +274,16 @@ void* worker_threads(void* arg) {
 void* log_thread(void* arg) {
     char* response; 
     while(1) {
+        printf("TEST: Log thread activated. We are writing to log!\n");
         response = removeFromLogQueue();  //Since the queue is no longer empty, then remove a socket descriptor for use
+        printf("TEST: Pulled following from log queue: %s.\n", response);
+        logFile = fopen("log.txt", "a");
+        if(logFile == NULL) {
+            printf("Error creating log file.");
+            exit(1);
+        } 
         fputs(response, logFile);
-        free(response);
+        fclose(logFile);
     }
 }
 
@@ -329,6 +358,7 @@ int main(int argc, char** argv) {
         exit(1);
     }
     
+    
     //Check for amount of space needed for dictionary array
     char ch; 
     int dict_size = 0; 
@@ -373,6 +403,7 @@ int main(int argc, char** argv) {
         printf("Error creating log file.");
         exit(1);
     }
+    fclose(logFile);
 
     printf("TEST: Worker threads and log thread is created. Log file has been created.\n");
 
@@ -427,8 +458,8 @@ int main(int argc, char** argv) {
                                     * and listening for incoming 
                                     * connections. 
                                     ****************************/ 
-
-    socket_desc = socket(AF_INET, SOCK_STREAM, 0);          //Creating active socket descriptor
+                                
+    int socket_desc = socket(AF_INET, SOCK_STREAM, 0);          //Creating active socket descriptor
     if(socket_desc == -1) {
         printf("Error creating socket!");
         exit(1);
@@ -457,7 +488,7 @@ int main(int argc, char** argv) {
                                     * Accepting and distributing 
                                     * connection requests. 
                                     ****************************/   
-    while(1) {
+    while(1) { 
         printf("TEST: Now waiting for connection requests.\n");
         c = sizeof(struct sockaddr_in);
         new_socket = accept(socket_desc, (struct sockaddr *) &client, (socklen_t*) &c);
@@ -465,7 +496,7 @@ int main(int argc, char** argv) {
             printf("Error connecting. Please try again.");
             continue;
         } 
-        printf("Connection accepted.");
+        printf("Connection accepted!\n");
         addToSocketQueue(new_socket);
     }
 }

@@ -7,7 +7,7 @@ spell-checked, and the server will check a dictionary and tell the client whethe
 The server will continue to expect words from a client until they enter the escape key and press return. The program <br />
 that enables the Networked Spell Checker is multithreaded. The threads are the main thread, worker threads, and log thread.  
 Therefore, multiple clients can access the server at once and no data will be lost or compromised. Each time a word is entered,  
-the word is returned followed by either "OK" or "MISPELLED" based off whether the input was spelled correctly. <br />  
+the word is returned followed by either "OK" or "MISPELLED" based off whether the input was spelled correctly.  
 When the server is ran using "./server", the person running the server can choose a port number and dictionary name  <br /> 
 that they want to be accessed. 
 

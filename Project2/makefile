@@ -1,4 +1,0 @@
-# Jaime Riley, tuh06971 - CIS3207 Proj 2
-# Lab Section 4
-myshell: myshell.c myshell.h 
-    gcc -Wall -Werror myshell.c -o myshell

@@ -1,6 +1,5 @@
-Jaime Riley: tuh06971<br />
-CIS 3207<br />
-Networked Spell Checker<br />
+# Project 3, Networked Spell Checker
+### Jaime Riley
 
 This program allows clients to connect to a server, input one word at a time the words they would like to get <br />
 spell-checked, and the server will check a dictionary and tell the client whether the word is spelled correctly or not. <br />
